@@ -60,10 +60,10 @@ def pad_original_image(img,transformation_matrix,max_width,max_height):
     return a4im,offsetx,offsety
 
 def Transform(img,bboxes,shearval,rotval,max_width,max_height):
+
     bboxes=np.array(np.array(bboxes))
     othersinfo=bboxes[:,:2]
     bboxes=np.array(np.array(bboxes)[:,2:],dtype=np.int64)
-
     afine_tf = transform.AffineTransform(shear=shearval,rotation=rotval)
     points_transformation = transform.AffineTransform(shear=-1*shearval,rotation=-1*rotval)
     #img,offsetx,offsety=pad_original_image(Image.fromarray(img.astype(np.uint8)),points_transformation.params,max_width,max_height)
@@ -87,7 +87,9 @@ def Transform(img,bboxes,shearval,rotval,max_width,max_height):
 
     transformed_bboxes=np.concatenate((min_pts,max_pts),axis=1)
 
-    transformed_image = transform.warp(img, inverse_map=afine_tf)
+    img_arr = np.array(img)
+    transformed_image = transform.warp(img_arr, inverse_map=afine_tf) # Problem with this line
+
     out=img_as_ubyte(transformed_image)
     out=Image.fromarray(out)
     width,height=out.size
@@ -101,10 +103,9 @@ def Transform(img,bboxes,shearval,rotval,max_width,max_height):
     transformed_bboxes[:,2] = (transformed_bboxes[:,2] / width) * new_width
     transformed_bboxes[:,3] = (transformed_bboxes[:,3] / height) * new_height
 
-
     outbbox=out.getbbox()
     out=resize_image(out,(outbbox[0],outbbox[1]),size=(max_width,max_height))
     transformed_bboxes=np.array(transformed_bboxes,dtype=np.int64)
     transformed_bboxes=np.concatenate((othersinfo,transformed_bboxes),axis=1)
-    return out,transformed_bboxes
 
+    return out,transformed_bboxes

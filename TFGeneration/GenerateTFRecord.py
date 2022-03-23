@@ -53,9 +53,9 @@ class GenerateTFRecord:
         self.col_min=3                                  #minimum number of columns in a table
         self.col_max=9                                  #maximum number of columns in a table
         self.minshearval=-0.1                           #minimum value of shear to apply to images
-        self.maxshearval=0.1                            #maxmimum value of shear to apply to images
+        self.maxshearval=0.2                            #maxmimum value of shear to apply to images
         self.minrotval=-0.01                            #minimum rotation applied to images
-        self.maxrotval=0.01                             #maximum rotation applied to images
+        self.maxrotval=0.02                             #maximum rotation applied to images
         self.num_data_dims=5                            #data dimensions to store in tfrecord
         self.max_height=768                             #max image height
         self.max_width=1366                             #max image width
@@ -177,11 +177,11 @@ class GenerateTFRecord:
                         #if(apply_shear==True):
                         if(assigned_category+1==4):
                             #randomly select shear and rotation levels
-                            while(True):
-                                shearval = np.random.uniform(self.minshearval, self.maxshearval)
-                                rotval = np.random.uniform(self.minrotval, self.maxrotval)
-                                if(shearval!=0.0 or rotval!=0.0):
-                                    break
+                            #while(True):
+                            shearval = np.random.uniform(self.minshearval, self.maxshearval)
+                            rotval = np.random.uniform(self.minrotval, self.maxrotval)
+                            #if(shearval!=0.0 or rotval!=0.0):
+                                #break
                             #If the image is transformed, then its categorycategory is 4
 
                             #transform image and bounding boxes of the words
