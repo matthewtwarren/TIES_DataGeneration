@@ -233,19 +233,28 @@ class GenerateTFRecord:
 
         for matname,matrix in zip(mat_names,matrices):
             im=img.copy()
-            x=1
-            indices = np.argwhere(matrix[x] == 1)
-            for index in indices:
-                cv2.rectangle(im, (int(arr[index, 0])-3, int(arr[index, 1])-3),
-                              (int(arr[index, 2])+3, int(arr[index, 3])+3),
-                              (0,255,0), 1)
 
-            x = 4
-            indices = np.argwhere(matrix[x] == 1)
-            for index in indices:
-                cv2.rectangle(im, (int(arr[index, 0])-3, int(arr[index, 1])-3),
-                              (int(arr[index, 2])+3, int(arr[index, 3])+3),
-                              (0, 0, 255), 1)
+            # x=1
+            # indices = np.argwhere(matrix[x] == 1)
+            # for index in indices:
+            #     cv2.rectangle(im, (int(arr[index, 0])-3, int(arr[index, 1])-3),
+            #                   (int(arr[index, 2])+3, int(arr[index, 3])+3),
+            #                   (0,255,0), 1)
+            #
+            # x = 4
+            # indices = np.argwhere(matrix[x] == 1)
+            # for index in indices:
+            #     cv2.rectangle(im, (int(arr[index, 0])-3, int(arr[index, 1])-3),
+            #                   (int(arr[index, 2])+3, int(arr[index, 3])+3),
+            #                   (0, 0, 255), 1)
+
+            for x in range(no_of_words):
+                indices = np.argwhere(matrix[x] == 1)
+                c1 = np.random.randint(0, 255) ; c2 = np.random.randint(0, 255) ; c3 = np.random.randint(0, 255)
+                for index in indices:
+                    cv2.rectangle(im, (int(arr[index, 0])-3, int(arr[index, 1])-3),
+                                  (int(arr[index, 2])+3, int(arr[index, 3])+3),
+                                  (c1,c2,c3), 1)
 
             img_name=os.path.join('bboxes/',output_file_name+'_'+str(imgindex)+'_'+matname+'.jpg')
             cv2.imwrite(img_name,im)
@@ -283,8 +292,15 @@ class GenerateTFRecord:
                                 rowmatrix = np.array(arr[0],dtype=np.int64)
                                 bboxes = np.array(arr[3])
                                 tablecategory=arr[4][0]
+
+                                ''' Here is where the output files are generated. '''
+                                table_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))
+                                self.write_bboxes(bboxes,table_id,tablecategory)
+                                self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
+
                                 seq_ex = self.generate_tf_record(img, cellmatrix, rowmatrix, colmatrix, bboxes,tablecategory,imgindex,output_file_name)
                                 writer.write(seq_ex.SerializeToString())
+
                             print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,output_file_name,'with len:',(len(data_arr)))
                             print('category 1: ',all_table_categories[0],', category 2: ',all_table_categories[1],', category 3: ',all_table_categories[2],', category 4: ',all_table_categories[3])
                         except Exception as e:
@@ -319,7 +335,10 @@ class GenerateTFRecord:
         if(self.visualizebboxes):
             self.create_dir('bboxes')
 
-        self.create_dir(self.outtfpath)                 #create output directory if it does not exist
+        self.create_dir(self.outtfpath)              #create output directory if it does not exist
+        for tablecategory in range(1,5):
+            dirname=os.path.join(self.outtfpath,'category'+str(tablecategory))
+            self.create_dir(dirname)
 
         starttime=time.time()
         threads=[]
@@ -331,3 +350,16 @@ class GenerateTFRecord:
         for proc in threads:
             proc.join()
         print(time.time()-starttime)
+
+    def write_bboxes(self,bboxes,table_id,table_category):
+        ''' New function written by MTW.  Saves cell bboxes array as pickled array.'''
+
+        output_file_name_bbox=table_id+'.bboxes'
+        pickle.dump(bboxes,open(os.path.join(self.outtfpath,'category'+str(table_category),output_file_name_bbox),"wb"))
+
+    def write_matrices(self,col_mat,row_mat,cell_mat,table_id,table_category):
+        ''' New function written by MTW.  Saves adjacency matrices as pickled dictionary.'''
+        all_mat = {}
+        all_mat['row'] = row_mat ; all_mat['col'] = col_mat ; all_mat['cell'] = cell_mat ;
+        output_file_name_mat=table_id+'.matrices'
+        pickle.dump(all_mat,open(os.path.join(self.outtfpath,'category'+str(table_category),output_file_name_mat),"wb"))
