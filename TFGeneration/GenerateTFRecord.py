@@ -63,6 +63,9 @@ class GenerateTFRecord:
         self.visualizebboxes=visualizebboxes
 
     def get_category_distribution(self,filesize):
+        '''This function determines the number of images from each category.
+        If filesize is a multiple of 4, the categories will be equally split
+        '''
         tables_cat_dist=[0,0,0,0]
         firstdiv=filesize//2
         tables_cat_dist[0]=firstdiv//2
@@ -91,10 +94,9 @@ class GenerateTFRecord:
         dummy[:arr.shape[0],:arr.shape[1]]=arr
         return dummy
 
-
     def generate_tf_record(self, im, cellmatrix, rowmatrix, colmatrix, arr,tablecategory,imgindex,output_file_name):
         '''This function generates tfrecord files using given information'''
-        cellmatrix=self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+        cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
         colmatrix = self.pad_with_zeros(colmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
         rowmatrix = self.pad_with_zeros(rowmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
 
@@ -139,6 +141,7 @@ class GenerateTFRecord:
         return seq_ex
 
     def generate_tables(self,driver,N_imgs,output_file_name):
+        '''Creates tables (empty/filled?). Number of rows and columns are chosen (randomly) first.'''
         row_col_min=[self.row_min,self.col_min]                 #to randomly select number of rows
         row_col_max=[self.row_max,self.col_max]                 #to randomly select number of columns
         rc_arr = np.random.uniform(low=row_col_min, high=row_col_max, size=(N_imgs, 2))        #random row and col selection for N images
@@ -150,9 +153,9 @@ class GenerateTFRecord:
         rc_count=0                                              #for iterating through row and col array
         for assigned_category,cat_count in enumerate(self.tables_cat_dist):
             for _ in range(cat_count):
-                rows = int(round(rc_arr[rc_count][0]))
+                rows = int(round(rc_arr[rc_count][0])) # Needed as np.random.uniform generates floating point values
                 cols = int(round(rc_arr[rc_count][1]))
-            
+
                 exceptcount=0
                 while(True):
                     #This loop is to repeat and retry generating image if some an exception is encountered.
@@ -167,9 +170,10 @@ class GenerateTFRecord:
                         #for each word in the table. This will generate ground truth for our problem
                         im,bboxes = html_to_img(driver, html_content, id_count)
 
+
                         # apply_shear: bool - True: Apply Transformation, False: No Transformation | probability weight for shearing to be 25%
                         #apply_shear = random.choices([True, False],weights=[0.25,0.75])[0]
-                        
+
                         #if(apply_shear==True):
                         if(assigned_category+1==4):
                             #randomly select shear and rotation levels
@@ -183,8 +187,6 @@ class GenerateTFRecord:
                             #transform image and bounding boxes of the words
                             im, bboxes = Transform(im, bboxes, shearval, rotval, self.max_width, self.max_height)
                             tablecategory=4
-                                
-                                
 
                         if(self.visualizeimgs):
                             #if the image and equivalent html is need to be stored
@@ -298,13 +300,13 @@ class GenerateTFRecord:
 
     def write_to_tf(self,max_threads):
         '''This function starts tfrecords generation with number of threads = max_threads with each thread
-        working on a single tfrecord'''
-        
+        working on a single tfrecord. It also creates various directories to store table images and annotations.'''
+
         if(not os.path.exists(self.distributionfile)):
             if((not os.path.exists(self.unlvtablepath)) or (not os.path.exists(self.unlvimagespath)) or (not os.path.exists(self.unlvocrpath))):
                 print('UNLV dataset folders do not exist.')
                 return
-            
+
         #create all directories here
         if(self.visualizeimgs):
             self.create_dir('visualizeimgs')
@@ -313,8 +315,6 @@ class GenerateTFRecord:
                 self.create_dir(dirname)
                 self.create_dir(os.path.join(dirname,'html'))
                 self.create_dir(os.path.join(dirname, 'img'))
-
-
 
         if(self.visualizebboxes):
             self.create_dir('bboxes')

@@ -4,10 +4,10 @@ from TableGeneration.Distribution import Distribution
 import time
 
 '''
-The code for generating 4 categories of tables consists of several small pieces e.g. types of borders, 
+The code for generating 4 categories of tables consists of several small pieces e.g. types of borders,
 irregular/regular headers and transformations.
 
-We define header_categories which has two possiblities: 
+We define header_categories which has two possiblities:
 1. Regular headers
 2. Irregular headers
 
@@ -16,8 +16,8 @@ Both of header categories are equally likely to be chosen randomly.
 Regular Headers: Tables with only first row containing headers
 Irregular Headers: Tables which have headings on first column of each row.
 
-We define border_categories with 4 possibilities: 
-1. All borders 
+We define border_categories with 4 possibilities:
+1. All borders
 2. No borders
 3. Borders only under headings
 4. Only internal borders
@@ -53,7 +53,7 @@ class Table:
         else:
             self.borders_categories = {'types': [0,1, 2, 3], 'probs': [0.25,0.25, 0.25, 0.25]}
             self.border_cat = random.choices(self.borders_categories['types'], weights=self.borders_categories['probs'])[0]
-        
+
         self.spanflag=False
 
         self.idcounter=0
@@ -76,11 +76,10 @@ class Table:
         #header_count will keep track of how many top rows and how many left columns are being considered as headers
         self.header_count={'r':2,'c':0}
 
-        '''This matrix is essential for generating same cell, same row and same col matrices. Because this 
+        '''This matrix is essential for generating same cell, same row and same col matrices. Because this
         matrix holds the list of word ids in each cell of the table'''
         self.data_matrix = np.empty(shape=(self.no_of_rows,self.no_of_cols),dtype=object)
 
-        
 
     def get_log_value(self):
         ''' returns log base 2 (x)'''
@@ -237,7 +236,7 @@ class Table:
             style += """border-bottom:1px solid black;}"""
         elif(self.border_cat==3):
             style+="""border-left: 1px solid black;}
-                       th{border-bottom: 1px solid black;} table tr td:first-child, 
+                       th{border-bottom: 1px solid black;} table tr td:first-child,
                        table tr th:first-child {border-left: 0;}"""
         else:
             style+="""}"""
@@ -372,4 +371,3 @@ class Table:
                                              self.create_same_row_matrix()
         tablecategory=self.select_table_category()                      #select table category of the table
         return cells_matrix,cols_matrix,rows_matrix,self.idcounter,html,tablecategory
-

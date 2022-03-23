@@ -24,7 +24,6 @@ class Distribution:
         file.close()
         return self.get_words_numbers_others()
 
-
     def store_to_pickle(self):
         file=open(self.pickle_filename,'wb')
         pickle.dump(self.all_tables_data,file)
@@ -39,6 +38,7 @@ class Distribution:
         return self.all_words,self.all_numbers,self.all_others
 
     def get_distribution(self):
+        ''' Obtains distribution of words from OCR output files. The distribution is then pickled and read in each time after to save time.'''
         if(os.path.exists(self.pickle_filename)):
             self.load_from_pickle()
             return self.get_words_numbers_others()
@@ -86,7 +86,8 @@ class Distribution:
         return np.array(final_words_coords), np.array(final_text)
 
     def words_rectangles(self,root, table_coords,row_col_counter, im):
-
+        '''
+        '''
         table_coords = np.array(table_coords)
         #word means alphabetic word, number means digit, other means strings with special characters
 
@@ -128,6 +129,8 @@ class Distribution:
         return im,combined_counter
 
     def table_rectangle(self,root, im):
+        ''' Takes the image and root object (?) and returns the annotated image, table coordinates and column and row counts.'''
+
         height, width, _ = im.shape
         table_coords = []
         colors=[(255,0,0),(0,255,0)]

@@ -18,8 +18,6 @@ def warn(*args, **kwargs):
 
 warnings.warn = warn
 
-
-
 def html_to_img(driver,html_content,id_count):
     '''converts html to image'''
     counter=1                #This counter is to keep track of the exceptions and stop execution after 10 exceptions have occurred
