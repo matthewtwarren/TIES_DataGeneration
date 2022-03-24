@@ -24,6 +24,7 @@ def html_to_img(driver,html_content,id_count):
     while(True):
         try:
             driver.get("data:text/html;charset=utf-8," + html_content)
+            driver.set_window_size(3000,3000)
             window_size=driver.get_window_size()
             max_height,max_width=window_size['height'],window_size['width']
             element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, '0')))

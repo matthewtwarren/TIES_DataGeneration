@@ -48,17 +48,17 @@ class GenerateTFRecord:
         #logging.basicConfig(filename=os.path.join(self.logdir,'Log.log'), filemode='a+', format='%(name)s - %(levelname)s - %(message)s')
         self.num_of_max_vertices=900                    #number of vertices (maximum number of words in any table)
         self.max_length_of_word=30                      #max possible length of each word
-        self.row_min=3                                  #minimum number of rows in a table (includes headers)
-        self.row_max=15                                 #maximum number of rows in a table
-        self.col_min=3                                  #minimum number of columns in a table
-        self.col_max=9                                  #maximum number of columns in a table
+        self.row_min=2                                  #minimum number of rows in a table (includes headers)
+        self.row_max=40                                 #maximum number of rows in a table
+        self.col_min=2                                  #minimum number of columns in a table
+        self.col_max=20                                  #maximum number of columns in a table
         self.minshearval=-0.1                           #minimum value of shear to apply to images
-        self.maxshearval=0.2                            #maxmimum value of shear to apply to images
+        self.maxshearval=0.1                            #maxmimum value of shear to apply to images
         self.minrotval=-0.01                            #minimum rotation applied to images
-        self.maxrotval=0.02                             #maximum rotation applied to images
+        self.maxrotval=0.01                             #maximum rotation applied to images
         self.num_data_dims=5                            #data dimensions to store in tfrecord
-        self.max_height=768                             #max image height
-        self.max_width=1366                             #max image width
+        self.max_height=3000                            #max image height
+        self.max_width=3000                             #max image width
         self.tables_cat_dist = self.get_category_distribution(self.filesize)
         self.visualizebboxes=visualizebboxes
 
