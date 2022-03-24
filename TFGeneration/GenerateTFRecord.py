@@ -94,7 +94,7 @@ class GenerateTFRecord:
         dummy[:arr.shape[0],:arr.shape[1]]=arr
         return dummy
 
-    def generate_tf_record(self, im, cellmatrix, rowmatrix, colmatrix, arr,tablecategory,imgindex,output_file_name):
+    def generate_tf_record(self, im, cellmatrix, rowmatrix, colmatrix, arr,tablecategory,imgindex,output_file_names):
         '''This function generates tfrecord files using given information'''
         cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
         colmatrix = self.pad_with_zeros(colmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
@@ -115,7 +115,7 @@ class GenerateTFRecord:
         vertex_features[:no_of_words,:]=sample_out
 
         if(self.visualizebboxes):
-            self.draw_matrices(im,arr,[rowmatrix,colmatrix,cellmatrix],imgindex,output_file_name)
+            self.draw_matrices(im,arr,[rowmatrix,colmatrix,cellmatrix],imgindex,output_file_names)
 
         #vertex_text=np.chararray(shape=(self.num_of_max_vertices,self.max_length_of_word))
         #vertex_text[:no_of_words,:]=list(map(self.str_to_chars, words_arr))
@@ -140,7 +140,7 @@ class GenerateTFRecord:
         seq_ex = tf.train.Example(features=all_features)
         return seq_ex
 
-    def generate_tables(self,driver,N_imgs,output_file_name):
+    def generate_tables(self,driver,N_imgs,output_file_names):
         '''Creates tables (empty/filled?). Number of rows and columns are chosen (randomly) first.'''
         row_col_min=[self.row_min,self.col_min]                 #to randomly select number of rows
         row_col_max=[self.row_max,self.col_max]                 #to randomly select number of columns
@@ -191,10 +191,10 @@ class GenerateTFRecord:
                         if(self.visualizeimgs):
                             #if the image and equivalent html is need to be stored
                             dirname=os.path.join('visualizeimgs/','category'+str(tablecategory))
-                            f=open(os.path.join(dirname,'html',str(rc_count)+output_file_name.replace('.tfrecord','.html')),'w')
+                            f=open(os.path.join(dirname,'html',output_file_names[assigned_category]+'.html'),'w')
                             f.write(html_content)
                             f.close()
-                            im.save(os.path.join(dirname,'img',str(rc_count)+output_file_name.replace('.tfrecord','.png')), dpi=(600, 600))
+                            im.save(os.path.join(dirname,'img',output_file_names[assigned_category]+'.png'), dpi=(600, 600))
 
                         # driver.quit()
                         # 0/0
@@ -206,12 +206,12 @@ class GenerateTFRecord:
                         #traceback.print_exc()
                         exceptcount+=1
                         if(exceptioncount>10):
-                            print('More than 10 exceptions occured for file: ',output_file_name)
+                            print('More than 10 exceptions occured for file: ',output_file_names)
                             #if there are more than 10 exceptions, then return None
                             return None
                         #traceback.print_exc()
-                        #print('\nException No.', exceptioncount, ' File: ', str(output_file_name))
-                        #logging.error("Exception Occured "+str(output_file_name),exc_info=True)
+                        #print('\nException No.', exceptioncount, ' File: ', str(output_file_names))
+                        #logging.error("Exception Occured "+str(output_file_names),exc_info=True)
                 rc_count+=1
         if(len(data_arr)!=N_imgs):
             #If total number of images are not generated, then return None.
@@ -229,7 +229,6 @@ class GenerateTFRecord:
         img=np.dstack((img,img,img))
 
         mat_names=['row','col','cell']
-        output_file_name=output_file_name.replace('.tfrecord','')
 
         for matname,matrix in zip(mat_names,matrices):
             im=img.copy()
@@ -256,7 +255,7 @@ class GenerateTFRecord:
                                   (int(arr[index, 2])+3, int(arr[index, 3])+3),
                                   (c1,c2,c3), 1)
 
-            img_name=os.path.join('bboxes/',output_file_name+'_'+str(imgindex)+'_'+matname+'.jpg')
+            img_name=os.path.join('bboxes','category'+str(imgindex+1),output_file_name+'_'+matname+'.jpg')
             cv2.imwrite(img_name,im)
 
 
@@ -274,14 +273,16 @@ class GenerateTFRecord:
             starttime = time.time()
 
             #randomly select a name of length=20 for tfrecords file.
-            output_file_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + '.tfrecord'
-            print('\nThread: ',threadnum,' Started:', output_file_name)
+            output_file_names = []
+            for i in range(1,5):
+                output_file_names.append(''.join(random.choices(string.ascii_lowercase + string.digits, k=20)))
+            print('\nThread: ',threadnum,' Started:', output_file_names)
 
             #data_arr contains the images of generated tables and all_table_categories contains the table category of each of the table
-            data_arr,all_table_categories = self.generate_tables(driver, filesize, output_file_name)
+            data_arr,all_table_categories = self.generate_tables(driver, filesize, output_file_names)
             if(data_arr is not None):
                 if(len(data_arr)==filesize):
-                    with tf.io.TFRecordWriter(os.path.join(self.outtfpath,output_file_name),options=options) as writer:
+                    with tf.io.TFRecordWriter(os.path.join(self.outtfpath,output_file_names[0]+'.tfrecord'),options=options) as writer:
                         try:
                             for imgindex,subarr in enumerate(data_arr):
                                 arr=subarr[0]
@@ -294,17 +295,17 @@ class GenerateTFRecord:
                                 tablecategory=arr[4][0]
 
                                 ''' Here is where the output files are generated. '''
-                                table_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))
+                                table_id = output_file_names[imgindex]
                                 self.write_bboxes(bboxes,table_id,tablecategory)
                                 self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
 
-                                seq_ex = self.generate_tf_record(img, cellmatrix, rowmatrix, colmatrix, bboxes,tablecategory,imgindex,output_file_name)
+                                seq_ex = self.generate_tf_record(img, cellmatrix, rowmatrix, colmatrix, bboxes,tablecategory,imgindex,table_id)
                                 writer.write(seq_ex.SerializeToString())
 
-                            print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,output_file_name,'with len:',(len(data_arr)))
+                            print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,output_file_names,'with len:',(len(data_arr)))
                             print('category 1: ',all_table_categories[0],', category 2: ',all_table_categories[1],', category 3: ',all_table_categories[2],', category 4: ',all_table_categories[3])
                         except Exception as e:
-                            print('Exception occurred in write_tf function for file: ',output_file_name)
+                            print('Exception occurred in write_tf function for file: ',output_file_names)
                             traceback.print_exc()
                             self.logger.write(traceback.format_exc())
                             # print('Thread :',threadnum,' Removing',output_file_name)
@@ -334,6 +335,9 @@ class GenerateTFRecord:
 
         if(self.visualizebboxes):
             self.create_dir('bboxes')
+            for tablecategory in range(1,5):
+                dirname=os.path.join('bboxes','category'+str(tablecategory))
+                self.create_dir(dirname)
 
         self.create_dir(self.outtfpath)              #create output directory if it does not exist
         for tablecategory in range(1,5):

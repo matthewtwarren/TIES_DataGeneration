@@ -126,7 +126,11 @@ class Table:
         if(type=='n'):
             out= random.sample(self.all_numbers,1)
         elif(type=='r'):
-            out=random.sample(self.all_others,1)
+            while(True): # Loop ensures that no empty strings are written into the table.
+                out=random.sample(self.all_others,1)
+                out=[out[0].strip()]
+                if len(out[0]) > 0:
+                    break
         else:
             text_len=random.randint(1,2)
             out= random.sample(self.all_words,text_len)
