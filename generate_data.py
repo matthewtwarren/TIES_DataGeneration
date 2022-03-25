@@ -1,7 +1,6 @@
 from TFGeneration.GenerateTFRecord import *
 import argparse
 
-
 parser=argparse.ArgumentParser()
 parser.add_argument('--filesize',type=int,default=1)                #number of images in a single tfrecord file
 parser.add_argument('--threads',type=int,default=1)                 #one thread will work on one tfrecord
@@ -30,9 +29,3 @@ distributionfile='unlv_distribution'
 t = GenerateTFRecord(args.outpath,filesize,args.imagespath,
                      args.ocrpath,args.tablepath,visualizeimgs,visualizebboxes,distributionfile)
 t.write_to_tf(args.threads)
-
-
-
-
-
-
