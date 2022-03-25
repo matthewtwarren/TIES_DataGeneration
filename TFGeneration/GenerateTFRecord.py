@@ -213,17 +213,23 @@ class GenerateTFRecord:
             cv2.imwrite(img_name,im)
 
 
-    def write_tf(self,filesize,threadnum):
-        '''This function writes tfrecords. Input parameters are: filesize (number of images in one tfrecord), threadnum(thread id)'''
-        #options = tf.compat.v1.io.TFRecordOptions(tf.compat.v1.io.TFRecordCompressionType.GZIP)
+    def generate_table_set(self,filesize,threadnum):
+        '''Generates a set of of four tables, one for each category.
+
+        Args:
+            filesize: number of images in one tfrecord [obsolete]
+            threadnum: thread_id
+        '''
+
+        # For opening a browser session
         opts = Options()
         opts.set_headless()
         assert opts.headless
         driver = Firefox(options=opts)
 
         while(True):
-            starttime = time.time()
 
+            starttime = time.time()
             output_file_names = []
             for i in range(1,5):
                 output_file_names.append(''.join(random.choices(string.ascii_lowercase + string.digits, k=20)))
@@ -233,51 +239,50 @@ class GenerateTFRecord:
             data_arr,table_categories = self.generate_tables(driver, filesize, output_file_names)
             if(data_arr is not None):
                 if(len(data_arr)==filesize):
-                    #with tf.io.TFRecordWriter(os.path.join(self.outtfpath,output_file_names[0]+'.tfrecord'),options=options) as writer:
+
                     try:
                         for imgindex,subarr in enumerate(data_arr):
+
                             arr=subarr[0]
+                            tablecategory=arr[4][0]
+                            table_id = output_file_names[imgindex]
 
                             img=np.asarray(subarr[1][0],np.int64)[:,:,0]
                             colmatrix = np.array(arr[1],dtype=np.int64)
                             cellmatrix = np.array(arr[2],dtype=np.int64)
                             rowmatrix = np.array(arr[0],dtype=np.int64)
                             bboxes = np.array(arr[3])
-                            tablecategory=arr[4][0]
 
-                            ''' Here is where the output files are generated. '''
-                            table_id = output_file_names[imgindex]
+                            # Output files are generated here
                             self.write_bboxes(bboxes,table_id,tablecategory)
                             self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
 
-                            #self.generate_tf_record(img, cellmatrix, rowmatrix, colmatrix, bboxes,tablecategory,imgindex,table_id)
-
                             if(self.visualizebboxes):
                                 cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-                                colmatrix = self.pad_with_zeros(colmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
-                                rowmatrix = self.pad_with_zeros(rowmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
+                                colmatrix = self.pad_with_zeros(colmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                                rowmatrix = self.pad_with_zeros(rowmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
                                 img=img.astype(np.int64)
                                 self.draw_matrices(img,bboxes,[rowmatrix,colmatrix,cellmatrix],imgindex,table_id)
 
-
-                            #writer.write(seq_ex.SerializeToString())
-
                         print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,output_file_names,'with len:',(len(data_arr)))
                         print('category 1: ',table_categories[0],', category 2: ',table_categories[1],', category 3: ',table_categories[2],', category 4: ',table_categories[3])
+
                     except Exception as e:
-                        print('Exception occurred in write_tf function for file: ',output_file_names)
+                        print('Exception occurred in generate_table_set function for file: ',output_file_names)
                         traceback.print_exc()
                         self.logger.write(traceback.format_exc())
-                        # print('Thread :',threadnum,' Removing',output_file_name)
-                        # os.remove(os.path.join(self.outtfpath,output_file_name))
 
         driver.stop_client()
         driver.quit()
 
 
-    def write_to_tf(self,max_threads):
-        '''This function starts tfrecords generation with number of threads = max_threads with each thread
-        working on a single tfrecord. It also creates various directories to store table images and annotations.'''
+    def start_generation(self,max_threads):
+        '''Starts table generation using specified number of threads, where each thread is used to generate a set of
+        four tables (one from each category). It also creates various directories to store table images and annotations.
+
+        Args:
+            max_threads: the number of threads to use to generate tables.
+        '''
 
         if(not os.path.exists(self.distributionfile)):
             if((not os.path.exists(self.unlvtablepath)) or (not os.path.exists(self.unlvimagespath)) or (not os.path.exists(self.unlvocrpath))):
@@ -307,7 +312,7 @@ class GenerateTFRecord:
         starttime=time.time()
         threads=[]
         for threadnum in range(max_threads):
-            proc = Process(target=self.write_tf, args=(self.filesize, threadnum,))
+            proc = Process(target=self.generate_table_set, args=(self.filesize, threadnum,))
             proc.start()
             threads.append(proc)
 
