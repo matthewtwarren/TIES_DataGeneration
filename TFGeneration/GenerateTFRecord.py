@@ -94,7 +94,7 @@ class GenerateTFRecord:
         dummy[:arr.shape[0],:arr.shape[1]]=arr
         return dummy
 
-    def generate_tables(self,driver,N_imgs,output_file_names):
+    def generate_tables(self,driver,N_imgs,table_ids):
         '''Creates tables (empty/filled?). Number of rows and columns are chosen (randomly) first.'''
         row_col_min=[self.row_min,self.col_min]                 #to randomly select number of rows
         row_col_max=[self.row_max,self.col_max]                 #to randomly select number of columns
@@ -145,10 +145,10 @@ class GenerateTFRecord:
                         if(self.visualizeimgs):
                             #if the image and equivalent html is need to be stored
                             dirname=os.path.join('visualizeimgs/','category'+str(tablecategory))
-                            f=open(os.path.join(dirname,'html',output_file_names[assigned_category]+'.html'),'w')
+                            f=open(os.path.join(dirname,'html',table_ids[assigned_category]+'.html'),'w')
                             f.write(html_content)
                             f.close()
-                            im.save(os.path.join(dirname,'img',output_file_names[assigned_category]+'.png'), dpi=(600, 600))
+                            im.save(os.path.join(dirname,'img',table_ids[assigned_category]+'.png'), dpi=(600, 600))
 
                         # driver.quit()
                         # 0/0
@@ -160,12 +160,12 @@ class GenerateTFRecord:
                         #traceback.print_exc()
                         exceptcount+=1
                         if(exceptioncount>10):
-                            print('More than 10 exceptions occured for file: ',output_file_names)
+                            print('More than 10 exceptions occured for file: ',table_ids)
                             #if there are more than 10 exceptions, then return None
                             return None
                         #traceback.print_exc()
-                        #print('\nException No.', exceptioncount, ' File: ', str(output_file_names))
-                        #logging.error("Exception Occured "+str(output_file_names),exc_info=True)
+                        #print('\nException No.', exceptioncount, ' File: ', str(table_ids))
+                        #logging.error("Exception Occured "+str(table_ids),exc_info=True)
                 rc_count+=1
         if(len(data_arr)!=N_imgs):
             #If total number of images are not generated, then return None.
@@ -220,6 +220,7 @@ class GenerateTFRecord:
             filesize: number of images in one tfrecord [obsolete]
             threadnum: thread_id
         '''
+        starttime = time.time()
 
         # For opening a browser session
         opts = Options()
@@ -227,50 +228,49 @@ class GenerateTFRecord:
         assert opts.headless
         driver = Firefox(options=opts)
 
-        while(True):
+        # Table IDs
+        table_ids = []
+        for i in range(1,5):
+            table_ids.append(''.join(random.choices(string.ascii_lowercase + string.digits, k=20)))
 
-            starttime = time.time()
-            output_file_names = []
-            for i in range(1,5):
-                output_file_names.append(''.join(random.choices(string.ascii_lowercase + string.digits, k=20)))
-            print('\nThread: ',threadnum,' Started:', output_file_names)
+        print('\nThread: ',threadnum,' Started:', table_ids)
 
-            #data_arr contains the images of generated tables and table_categories contains the table category of each of the table
-            data_arr,table_categories = self.generate_tables(driver, filesize, output_file_names)
-            if(data_arr is not None):
-                if(len(data_arr)==filesize):
+        data_arr, table_categories = self.generate_tables(driver, filesize, table_ids)
 
-                    try:
-                        for imgindex,subarr in enumerate(data_arr):
+        if(data_arr is not None):
+            if(len(data_arr)==filesize):
 
-                            arr=subarr[0]
-                            tablecategory=arr[4][0]
-                            table_id = output_file_names[imgindex]
+                try:
+                    for imgindex,subarr in enumerate(data_arr):
 
-                            img=np.asarray(subarr[1][0],np.int64)[:,:,0]
-                            colmatrix = np.array(arr[1],dtype=np.int64)
-                            cellmatrix = np.array(arr[2],dtype=np.int64)
-                            rowmatrix = np.array(arr[0],dtype=np.int64)
-                            bboxes = np.array(arr[3])
+                        arr=subarr[0]
+                        tablecategory=arr[4][0]
+                        table_id = table_ids[imgindex]
 
-                            # Output files are generated here
-                            self.write_bboxes(bboxes,table_id,tablecategory)
-                            self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
+                        img=np.asarray(subarr[1][0],np.int64)[:,:,0]
+                        colmatrix = np.array(arr[1],dtype=np.int64)
+                        cellmatrix = np.array(arr[2],dtype=np.int64)
+                        rowmatrix = np.array(arr[0],dtype=np.int64)
+                        bboxes = np.array(arr[3])
 
-                            if(self.visualizebboxes):
-                                cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-                                colmatrix = self.pad_with_zeros(colmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-                                rowmatrix = self.pad_with_zeros(rowmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-                                img=img.astype(np.int64)
-                                self.draw_matrices(img,bboxes,[rowmatrix,colmatrix,cellmatrix],imgindex,table_id)
+                        # Output files are generated here
+                        self.write_bboxes(bboxes,table_id,tablecategory)
+                        self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
 
-                        print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,output_file_names,'with len:',(len(data_arr)))
-                        print('category 1: ',table_categories[0],', category 2: ',table_categories[1],', category 3: ',table_categories[2],', category 4: ',table_categories[3])
+                        if(self.visualizebboxes):
+                            cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                            colmatrix = self.pad_with_zeros(colmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                            rowmatrix = self.pad_with_zeros(rowmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                            img=img.astype(np.int64)
+                            self.draw_matrices(img,bboxes,[rowmatrix,colmatrix,cellmatrix],imgindex,table_id)
 
-                    except Exception as e:
-                        print('Exception occurred in generate_table_set function for file: ',output_file_names)
-                        traceback.print_exc()
-                        self.logger.write(traceback.format_exc())
+                    print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,table_ids,'with len:',(len(data_arr)))
+                    print('category 1: ',table_categories[0],', category 2: ',table_categories[1],', category 3: ',table_categories[2],', category 4: ',table_categories[3])
+
+                except Exception as e:
+                    print('Exception occurred in generate_table_set function for file: ',table_ids)
+                    traceback.print_exc()
+                    self.logger.write(traceback.format_exc())
 
         driver.stop_client()
         driver.quit()
