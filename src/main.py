@@ -9,16 +9,16 @@ import os
 import string
 import pickle
 from multiprocessing import Process,Lock
-from TableGeneration.Table import Table
+from src.table import Table
 from multiprocessing import Process,Pool,cpu_count
 import random
 import argparse
-from TableGeneration.tools import *
+from src.tools import *
 import numpy as np
 from selenium.webdriver import Firefox
 from selenium.webdriver import PhantomJS
 import warnings
-from TableGeneration.Transformation import *
+from src.transformation import *
 
 def warn(*args,**kwargs):
     pass
@@ -33,7 +33,7 @@ class Logger:
         file.write(txt)
         file.close()
 
-class GenerateTFRecord:
+class TableGenerator:
     def __init__(self, outpath,tablesets,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath):
         self.outtfpath = outpath                        #directory to store tfrecords
         self.tablesets=tablesets                      #number of table sets to generate
@@ -61,20 +61,6 @@ class GenerateTFRecord:
         self.max_width=1366                           #max image width
         self.tables_cat_dist = [1,1,1,1]
         self.visualizebboxes=visualizebboxes
-
-    # def get_category_distribution(self,tablesets): # Remove - replace with numbers of each category as an input
-    #     '''This function determines the number of images from each category.
-    #     If tablesets is a multiple of 4, the categories will be equally split
-    #     '''
-    #     tables_cat_dist=[0,0,0,0]
-    #     firstdiv=tablesets//2
-    #     tables_cat_dist[0]=firstdiv//2
-    #     tables_cat_dist[1]=firstdiv-tables_cat_dist[0]
-    #
-    #     seconddiv=tablesets-firstdiv
-    #     tables_cat_dist[2]=seconddiv//2
-    #     tables_cat_dist[3]=seconddiv-tables_cat_dist[2]
-    #     return tables_cat_dist
 
     def create_dir(self,fpath):                         #creates directory fpath if it does not exist
         if(not os.path.exists(fpath)):
@@ -210,11 +196,10 @@ class GenerateTFRecord:
             cv2.imwrite(img_name,im)
 
 
-    def generate_table_set(self,tablesets,threadnum):
+    def generate_table_set(self,threadnum):
         '''Generates a set of of four tables, one for each category.
 
         Args:
-            tablesets: number of images in one tfrecord [obsolete]
             threadnum: thread_id
         '''
         starttime = time.time()
@@ -307,7 +292,7 @@ class GenerateTFRecord:
         starttime=time.time()
         threads=[]
         for threadnum in range(max_threads):
-            proc = Process(target=self.generate_table_set, args=(self.tablesets, threadnum,))
+            proc = Process(target=self.generate_table_set, args=(threadnum,))
             proc.start()
             threads.append(proc)
 

@@ -1,6 +1,6 @@
 import random
 import numpy as np
-from TableGeneration.Distribution import Distribution
+from src.distribution import Distribution
 import time
 
 '''

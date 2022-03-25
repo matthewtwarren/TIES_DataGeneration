@@ -1,4 +1,4 @@
-from TFGeneration.GenerateTFRecord import *
+from src.main import *
 import argparse
 
 parser=argparse.ArgumentParser()
@@ -25,6 +25,5 @@ if(args.visualizebboxes==1):
 
 distributionfile='unlv_distribution'
 
-t = GenerateTFRecord(args.outpath,args.tablesets,args.imagespath,
-                     args.ocrpath,args.tablepath,visualizeimgs,visualizebboxes,distributionfile)
+t = TableGenerator(args.outpath,args.tablesets,args.imagespath,args.ocrpath,args.tablepath,visualizeimgs,visualizebboxes,distributionfile)
 t.start_generation(args.threads)
