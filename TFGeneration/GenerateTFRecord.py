@@ -94,52 +94,6 @@ class GenerateTFRecord:
         dummy[:arr.shape[0],:arr.shape[1]]=arr
         return dummy
 
-    def generate_tf_record(self, im, cellmatrix, rowmatrix, colmatrix, arr,tablecategory,imgindex,output_file_names):
-        '''This function generates tfrecord files using given information'''
-        cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-        colmatrix = self.pad_with_zeros(colmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
-        rowmatrix = self.pad_with_zeros(rowmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
-
-        #im = np.array(cv2.imread(img_path, 0),dtype=np.int64)
-        im=im.astype(np.int64)
-        img_height, img_width=im.shape
-
-        words_arr = arr[:, 1].tolist()
-        no_of_words = len(words_arr)
-
-
-        lengths_arr = self.convert_to_int(arr[:, 0])
-        vertex_features=np.zeros(shape=(self.num_of_max_vertices,self.num_data_dims),dtype=np.int64)
-        lengths_arr=np.array(lengths_arr).reshape(len(lengths_arr),-1)
-        sample_out=np.array(np.concatenate((arr[:,2:],lengths_arr),axis=1))
-        vertex_features[:no_of_words,:]=sample_out
-
-        if(self.visualizebboxes):
-            self.draw_matrices(im,arr,[rowmatrix,colmatrix,cellmatrix],imgindex,output_file_names)
-
-        #vertex_text=np.chararray(shape=(self.num_of_max_vertices,self.max_length_of_word))
-        #vertex_text[:no_of_words,:]=list(map(self.str_to_chars, words_arr))
-        #vertex_text=words_arr+[""]*(self.num_of_max_vertices-len(words_arr))
-
-        vertex_text = np.zeros((self.num_of_max_vertices,self.max_length_of_word), dtype=np.int64)
-        vertex_text[:no_of_words]=np.array(list(map(self.str_to_int,words_arr)))
-
-
-        #feature = dict()
-        #feature['image'] = tf.train.Feature(float_list=tf.train.FloatList(value=im.astype(np.float32).flatten()))
-        #feature['global_features'] = tf.train.Feature(float_list=tf.train.FloatList(value=np.array([img_height, img_width,no_of_words,tablecategory]).astype(np.float32).flatten()))
-        #feature['vertex_features'] = tf.train.Feature(float_list=tf.train.FloatList(value=vertex_features.astype(np.float32).flatten()))
-        #feature['adjacency_matrix_cells'] = tf.train.Feature(int64_list=tf.train.Int64List(value=cellmatrix.astype(np.int64).flatten()))
-        #feature['adjacency_matrix_cols'] = tf.train.Feature(int64_list=tf.train.Int64List(value=colmatrix.astype(np.int64).flatten()))
-        #feature['adjacency_matrix_rows'] = tf.train.Feature(int64_list=tf.train.Int64List(value=rowmatrix.astype(np.int64).flatten()))
-        #feature['vertex_text'] = tf.train.Feature(int64_list=tf.train.Int64List(value=vertex_text.astype(np.int64).flatten()))
-
-        #all_features = tf.train.Features(feature=feature)
-
-
-        #seq_ex = tf.train.Example(features=all_features)
-        #return seq_ex
-
     def generate_tables(self,driver,N_imgs,output_file_names):
         '''Creates tables (empty/filled?). Number of rows and columns are chosen (randomly) first.'''
         row_col_min=[self.row_min,self.col_min]                 #to randomly select number of rows
@@ -296,7 +250,16 @@ class GenerateTFRecord:
                             self.write_bboxes(bboxes,table_id,tablecategory)
                             self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
 
-                            self.generate_tf_record(img, cellmatrix, rowmatrix, colmatrix, bboxes,tablecategory,imgindex,table_id)
+                            #self.generate_tf_record(img, cellmatrix, rowmatrix, colmatrix, bboxes,tablecategory,imgindex,table_id)
+
+                            if(self.visualizebboxes):
+                                cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                                colmatrix = self.pad_with_zeros(colmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
+                                rowmatrix = self.pad_with_zeros(rowmatrix, (self.num_of_max_vertices, self.num_of_max_vertices))
+                                img=img.astype(np.int64)
+                                self.draw_matrices(img,bboxes,[rowmatrix,colmatrix,cellmatrix],imgindex,table_id)
+
+
                             #writer.write(seq_ex.SerializeToString())
 
                         print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,output_file_names,'with len:',(len(data_arr)))
