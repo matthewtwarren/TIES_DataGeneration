@@ -34,9 +34,9 @@ class Logger:
         file.close()
 
 class GenerateTFRecord:
-    def __init__(self, outpath,filesize,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath):
+    def __init__(self, outpath,tablesets,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath):
         self.outtfpath = outpath                        #directory to store tfrecords
-        self.filesize=filesize                          #number of images in each tfrecord
+        self.tablesets=tablesets                      #number of table sets to generate
         self.unlvocrpath=unlvocrpath                    #unlv ocr ground truth files
         self.unlvimagespath=unlvimagespath              #unlv images
         self.unlvtablepath=unlvtablepath                #unlv ground truth of tabls
@@ -59,22 +59,22 @@ class GenerateTFRecord:
         self.num_data_dims=5                            #data dimensions to store in tfrecord
         self.max_height=768                           #max image height
         self.max_width=1366                           #max image width
-        self.tables_cat_dist = self.get_category_distribution(self.filesize)
+        self.tables_cat_dist = [1,1,1,1]
         self.visualizebboxes=visualizebboxes
 
-    def get_category_distribution(self,filesize): # Remove - replace with numbers of each category as an input
-        '''This function determines the number of images from each category.
-        If filesize is a multiple of 4, the categories will be equally split
-        '''
-        tables_cat_dist=[0,0,0,0]
-        firstdiv=filesize//2
-        tables_cat_dist[0]=firstdiv//2
-        tables_cat_dist[1]=firstdiv-tables_cat_dist[0]
-
-        seconddiv=filesize-firstdiv
-        tables_cat_dist[2]=seconddiv//2
-        tables_cat_dist[3]=seconddiv-tables_cat_dist[2]
-        return tables_cat_dist
+    # def get_category_distribution(self,tablesets): # Remove - replace with numbers of each category as an input
+    #     '''This function determines the number of images from each category.
+    #     If tablesets is a multiple of 4, the categories will be equally split
+    #     '''
+    #     tables_cat_dist=[0,0,0,0]
+    #     firstdiv=tablesets//2
+    #     tables_cat_dist[0]=firstdiv//2
+    #     tables_cat_dist[1]=firstdiv-tables_cat_dist[0]
+    #
+    #     seconddiv=tablesets-firstdiv
+    #     tables_cat_dist[2]=seconddiv//2
+    #     tables_cat_dist[3]=seconddiv-tables_cat_dist[2]
+    #     return tables_cat_dist
 
     def create_dir(self,fpath):                         #creates directory fpath if it does not exist
         if(not os.path.exists(fpath)):
@@ -94,11 +94,11 @@ class GenerateTFRecord:
         dummy[:arr.shape[0],:arr.shape[1]]=arr
         return dummy
 
-    def generate_tables(self,driver,N_imgs,table_ids):
+    def generate_tables(self,driver,table_ids):
         '''Creates tables (empty/filled?). Number of rows and columns are chosen (randomly) first.'''
         row_col_min=[self.row_min,self.col_min]                 #to randomly select number of rows
         row_col_max=[self.row_max,self.col_max]                 #to randomly select number of columns
-        rc_arr = np.random.uniform(low=row_col_min, high=row_col_max, size=(N_imgs, 2))        #random row and col selection for N images
+        rc_arr = np.random.uniform(low=row_col_min, high=row_col_max, size=(4, 2))        #random row and col selection for N images
         table_categories=[0,0,0,0]                         #These 4 values will count the number of images for each of the category
         rc_arr[:,0]=rc_arr[:,0]+2                                     #increasing the number of rows by a fix 2. (We can comment out this line. Does not affect much)
         data_arr=[]
@@ -167,10 +167,7 @@ class GenerateTFRecord:
                         #print('\nException No.', exceptioncount, ' File: ', str(table_ids))
                         #logging.error("Exception Occured "+str(table_ids),exc_info=True)
                 rc_count+=1
-        if(len(data_arr)!=N_imgs):
-            #If total number of images are not generated, then return None.
-            print('Images not equal to the required size.')
-            return None
+
         return data_arr,table_categories
 
     def draw_matrices(self,img,arr,matrices,imgindex,output_file_name):
@@ -213,11 +210,11 @@ class GenerateTFRecord:
             cv2.imwrite(img_name,im)
 
 
-    def generate_table_set(self,filesize,threadnum):
+    def generate_table_set(self,tablesets,threadnum):
         '''Generates a set of of four tables, one for each category.
 
         Args:
-            filesize: number of images in one tfrecord [obsolete]
+            tablesets: number of images in one tfrecord [obsolete]
             threadnum: thread_id
         '''
         starttime = time.time()
@@ -235,42 +232,40 @@ class GenerateTFRecord:
 
         print('\nThread: ',threadnum,' Started:', table_ids)
 
-        data_arr, table_categories = self.generate_tables(driver, filesize, table_ids)
+        data_arr, table_categories = self.generate_tables(driver, table_ids)
 
         if(data_arr is not None):
-            if(len(data_arr)==filesize):
+            try:
+                for imgindex,subarr in enumerate(data_arr):
 
-                try:
-                    for imgindex,subarr in enumerate(data_arr):
+                    arr=subarr[0]
+                    tablecategory=arr[4][0]
+                    table_id = table_ids[imgindex]
 
-                        arr=subarr[0]
-                        tablecategory=arr[4][0]
-                        table_id = table_ids[imgindex]
+                    img=np.asarray(subarr[1][0],np.int64)[:,:,0]
+                    colmatrix = np.array(arr[1],dtype=np.int64)
+                    cellmatrix = np.array(arr[2],dtype=np.int64)
+                    rowmatrix = np.array(arr[0],dtype=np.int64)
+                    bboxes = np.array(arr[3])
 
-                        img=np.asarray(subarr[1][0],np.int64)[:,:,0]
-                        colmatrix = np.array(arr[1],dtype=np.int64)
-                        cellmatrix = np.array(arr[2],dtype=np.int64)
-                        rowmatrix = np.array(arr[0],dtype=np.int64)
-                        bboxes = np.array(arr[3])
+                    # Output files are generated here
+                    self.write_bboxes(bboxes,table_id,tablecategory)
+                    self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
 
-                        # Output files are generated here
-                        self.write_bboxes(bboxes,table_id,tablecategory)
-                        self.write_matrices(colmatrix,rowmatrix,cellmatrix,table_id,tablecategory)
+                    if(self.visualizebboxes):
+                        cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                        colmatrix = self.pad_with_zeros(colmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                        rowmatrix = self.pad_with_zeros(rowmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
+                        img=img.astype(np.int64)
+                        self.draw_matrices(img,bboxes,[rowmatrix,colmatrix,cellmatrix],imgindex,table_id)
 
-                        if(self.visualizebboxes):
-                            cellmatrix = self.pad_with_zeros(cellmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-                            colmatrix = self.pad_with_zeros(colmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-                            rowmatrix = self.pad_with_zeros(rowmatrix,(self.num_of_max_vertices,self.num_of_max_vertices))
-                            img=img.astype(np.int64)
-                            self.draw_matrices(img,bboxes,[rowmatrix,colmatrix,cellmatrix],imgindex,table_id)
+                print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,table_ids,'with len:',(len(data_arr)))
+                print('category 1: ',table_categories[0],', category 2: ',table_categories[1],', category 3: ',table_categories[2],', category 4: ',table_categories[3])
 
-                    print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,table_ids,'with len:',(len(data_arr)))
-                    print('category 1: ',table_categories[0],', category 2: ',table_categories[1],', category 3: ',table_categories[2],', category 4: ',table_categories[3])
-
-                except Exception as e:
-                    print('Exception occurred in generate_table_set function for file: ',table_ids)
-                    traceback.print_exc()
-                    self.logger.write(traceback.format_exc())
+            except Exception as e:
+                print('Exception occurred in generate_table_set function for file: ',table_ids)
+                traceback.print_exc()
+                self.logger.write(traceback.format_exc())
 
         driver.stop_client()
         driver.quit()
@@ -312,7 +307,7 @@ class GenerateTFRecord:
         starttime=time.time()
         threads=[]
         for threadnum in range(max_threads):
-            proc = Process(target=self.generate_table_set, args=(self.filesize, threadnum,))
+            proc = Process(target=self.generate_table_set, args=(self.tablesets, threadnum,))
             proc.start()
             threads.append(proc)
 
