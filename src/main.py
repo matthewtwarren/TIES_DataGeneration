@@ -1,25 +1,21 @@
-import warnings
-warnings.filterwarnings("ignore")
-
-#import tensorflow as tf
 import numpy as np
+import random
 import traceback
 import cv2
 import os
 import string
 import pickle
-from multiprocessing import Process,Lock
-from src.table import Table
+from datetime import datetime
 from multiprocessing import Process,Pool,cpu_count
-import random
 import argparse
-from src.tools import *
-import numpy as np
 from selenium.webdriver import Firefox
 from selenium.webdriver import PhantomJS
 import warnings
+warnings.filterwarnings("ignore")
+
+from src.table import Table
+from src.tools import *
 from src.transformation import *
-from datetime import datetime
 
 def warn(*args,**kwargs):
     pass
