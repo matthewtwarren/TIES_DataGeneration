@@ -19,6 +19,7 @@ from selenium.webdriver import Firefox
 from selenium.webdriver import PhantomJS
 import warnings
 from src.transformation import *
+from datetime import datetime
 
 def warn(*args,**kwargs):
     pass
@@ -34,33 +35,40 @@ class Logger:
         file.close()
 
 class TableGenerator:
-    def __init__(self, outpath,tablesets,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath):
+    def __init__(self,outpath,tablesets,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath,minrows,maxrows,mincols,maxcols):
+
         self.outtfpath = outpath                        #directory to store tfrecords
         self.tablesets=tablesets                      #number of table sets to generate
+
         self.unlvocrpath=unlvocrpath                    #unlv ocr ground truth files
         self.unlvimagespath=unlvimagespath              #unlv images
         self.unlvtablepath=unlvtablepath                #unlv ground truth of tabls
-        self.visualizeimgs=visualizeimgs                #wheter to store images separately or not
+
         self.distributionfile=distributionfilepath      #pickle file containing UNLV distribution
-        self.logger=Logger()                            #if we want to use logger and store output to file
-        #self.logdir = 'logdir/'
-        #self.create_dir(self.logdir)
-        #logging.basicConfig(filename=os.path.join(self.logdir,'Log.log'), filemode='a+', format='%(name)s - %(levelname)s - %(message)s')
-        self.num_of_max_vertices=100                    #number of vertices (maximum number of words in any table)
+
+        self.visualizeimgs=visualizeimgs                #wheter to store images separately or not
+        self.visualizebboxes=visualizebboxes
+
+        self.row_min=minrows                                  #minimum number of rows in a table (includes headers)
+        self.row_max=maxrows                            #maximum number of rows in a table
+        self.col_min=mincols                                 #minimum number of columns in a table
+        self.col_max=maxcols                                  #maximum number of columns in a table
+        self.num_of_max_vertices=self.col_max*self.row_max*2   #number of vertices (maximum number of words in any table)
         self.max_length_of_word=30                      #max possible length of each word
-        self.row_min=2                                  #minimum number of rows in a table (includes headers)
-        self.row_max=5                                #maximum number of rows in a table
-        self.col_min=2                                  #minimum number of columns in a table
-        self.col_max=5                                  #maximum number of columns in a table
+
         self.minshearval=-0.1                           #minimum value of shear to apply to images
         self.maxshearval=0.1                            #maxmimum value of shear to apply to images
         self.minrotval=-0.01                            #minimum rotation applied to images
         self.maxrotval=0.01                             #maximum rotation applied to images
-        self.num_data_dims=5                            #data dimensions to store in tfrecord
+
         self.max_height=768                           #max image height
         self.max_width=1366                           #max image width
         self.tables_cat_dist = [1,1,1,1]
-        self.visualizebboxes=visualizebboxes
+
+        self.logger=Logger()                            #if we want to use logger and store output to file
+        #self.logdir = 'logdir/'
+        #self.create_dir(self.logdir)
+        #logging.basicConfig(filename=os.path.join(self.logdir,'Log.log'), filemode='a+', format='%(name)s - %(levelname)s - %(message)s')
 
     def create_dir(self,fpath):                         #creates directory fpath if it does not exist
         if(not os.path.exists(fpath)):
@@ -106,23 +114,17 @@ class TableGenerator:
                         #(same row, col and cell matrices, total unique ids, html conversion of table and its category)
                         same_cell_matrix,same_col_matrix,same_row_matrix, id_count, html_content,tablecategory= table.create()
 
-                        #convert this html code to image using selenium webdriver. Get equivalent bounding boxes
-                        #for each word in the table. This will generate ground truth for our problem
+                        # Convert this html code to image using selenium webdriver. Get equivalent bounding boxes
+                        # for each word in the table. This will generate ground truth for our problem
                         im,bboxes = html_to_img(driver, html_content, id_count)
 
-
-                        # apply_shear: bool - True: Apply Transformation, False: No Transformation | probability weight for shearing to be 25%
+                        #apply_shear: bool - True: Apply Transformation, False: No Transformation | probability weight for shearing to be 25%
                         #apply_shear = random.choices([True, False],weights=[0.25,0.75])[0]
 
-                        #if(apply_shear==True):
                         if(assigned_category+1==4):
                             #randomly select shear and rotation levels
-                            #while(True):
                             shearval = np.random.uniform(self.minshearval, self.maxshearval)
                             rotval = np.random.uniform(self.minrotval, self.maxrotval)
-                            #if(shearval!=0.0 or rotval!=0.0):
-                                #break
-                            #If the image is transformed, then its categorycategory is 4
 
                             #transform image and bounding boxes of the words
                             im, bboxes = Transform(im, bboxes, shearval, rotval, self.max_width, self.max_height)
@@ -140,13 +142,12 @@ class TableGenerator:
                         # 0/0
                         data_arr.append([[same_row_matrix, same_col_matrix, same_cell_matrix, bboxes,[tablecategory]],[im]])
                         table_categories[tablecategory-1]+=1
-                        #print('Assigned category: ',assigned_category+1,', generated category: ',tablecategory)
                         break
+
                     except Exception as e:
-                        #traceback.print_exc()
                         exceptcount+=1
                         if(exceptioncount>10):
-                            print('More than 10 exceptions occured for file: ',table_ids)
+                            print('More than 10 exceptions occured for files: ',table_ids)
                             #if there are more than 10 exceptions, then return None
                             return None
                         #traceback.print_exc()
@@ -170,20 +171,6 @@ class TableGenerator:
         for matname,matrix in zip(mat_names,matrices):
             im=img.copy()
 
-            # x=1
-            # indices = np.argwhere(matrix[x] == 1)
-            # for index in indices:
-            #     cv2.rectangle(im, (int(arr[index, 0])-3, int(arr[index, 1])-3),
-            #                   (int(arr[index, 2])+3, int(arr[index, 3])+3),
-            #                   (0,255,0), 1)
-            #
-            # x = 4
-            # indices = np.argwhere(matrix[x] == 1)
-            # for index in indices:
-            #     cv2.rectangle(im, (int(arr[index, 0])-3, int(arr[index, 1])-3),
-            #                   (int(arr[index, 2])+3, int(arr[index, 3])+3),
-            #                   (0, 0, 255), 1)
-
             for x in range(no_of_words):
                 indices = np.argwhere(matrix[x] == 1)
                 c1 = np.random.randint(0, 255) ; c2 = np.random.randint(0, 255) ; c3 = np.random.randint(0, 255)
@@ -194,7 +181,6 @@ class TableGenerator:
 
             img_name=os.path.join('bboxes','category'+str(imgindex+1),output_file_name+'_'+matname+'.jpg')
             cv2.imwrite(img_name,im)
-
 
     def generate_table_set(self,threadnum):
         '''Generates a set of of four tables, one for each category.
@@ -289,16 +275,23 @@ class TableGenerator:
             dirname=os.path.join(self.outtfpath,'category'+str(tablecategory))
             self.create_dir(dirname)
 
-        starttime=time.time()
-        threads=[]
-        for threadnum in range(max_threads):
-            proc = Process(target=self.generate_table_set, args=(threadnum,))
-            proc.start()
-            threads.append(proc)
+        time=datetime.now()
+        time_string=time.strftime("%d/%m/%Y %H:%M:%S")
+        print("Table generation started:",time_string)
 
-        for proc in threads:
-            proc.join()
-        print(time.time()-starttime)
+        threads=[]
+        for set in range(self.tablesets):
+            for threadnum in range(max_threads):
+                proc = Process(target=self.generate_table_set, args=(threadnum,))
+                proc.start()
+                threads.append(proc)
+
+            for proc in threads:
+                proc.join() # Ensures any processes (proc) have finished before starting new set (outer loop)
+
+        time=datetime.now()
+        time_string=time.strftime("%d/%m/%Y %H:%M:%S")
+        print("\nTable generation finished:",time_string)
 
     def write_bboxes(self,bboxes,table_id,table_category):
         ''' New function written by MTW.  Saves cell bboxes array as pickled array.'''

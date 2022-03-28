@@ -4,7 +4,12 @@ import argparse
 parser=argparse.ArgumentParser()
 parser.add_argument('--tablesets',type=int,default=1)             # Number of table sets to generate, where one set contains four tables, one from each category
 parser.add_argument('--threads',type=int,default=1)               # One thread will generate one set of tables
-parser.add_argument('--outpath',default='tfrecords/')             # Directory to bbox data and adjacency matrices
+parser.add_argument('--outpath',default='output/')             # Directory to bbox data and adjacency matrices
+
+parser.add_argument('--minrows',type=int,default=1)
+parser.add_argument('--maxrows',type=int,default=10)
+parser.add_argument('--mincols',type=int,default=1)
+parser.add_argument('--maxcols',type=int,default=10)
 
 #imagespath,
 parser.add_argument('--imagespath',default='../Table_Detection_Dataset/unlv/train/images')
@@ -25,5 +30,5 @@ if(args.visualizebboxes==1):
 
 distributionfile='unlv_distribution'
 
-t = TableGenerator(args.outpath,args.tablesets,args.imagespath,args.ocrpath,args.tablepath,visualizeimgs,visualizebboxes,distributionfile)
+t = TableGenerator(args.outpath,args.tablesets,args.imagespath,args.ocrpath,args.tablepath,visualizeimgs,visualizebboxes,distributionfile,args.minrows,args.maxrows,args.mincols,args.maxcols)
 t.start_generation(args.threads)
