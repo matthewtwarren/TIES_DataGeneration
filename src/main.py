@@ -1,9 +1,11 @@
 import numpy as np
+import pandas as pd
 import random
 import traceback
 import cv2
 import os
 import string
+import csv
 import pickle
 from datetime import datetime
 from multiprocessing import Process,Pool,cpu_count
@@ -33,7 +35,7 @@ class Logger:
 class TableGenerator:
     def __init__(self,outpath,generations,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath,minrows,maxrows,mincols,maxcols):
 
-        self.outtfpath = outpath                        #directory to store tfrecords
+        self.outpath = outpath                        #directory to store tfrecords
         self.num_of_generations=generations             #number of table set generations (table sets / threads)
 
         self.unlvocrpath=unlvocrpath                    #unlv ocr ground truth files
@@ -113,6 +115,17 @@ class TableGenerator:
                         # Convert this html code to image using selenium webdriver. Get equivalent bounding boxes
                         # for each word in the table. This will generate ground truth for our problem
                         im,bboxes = html_to_img(driver, html_content, id_count)
+                        dirname=os.path.join(self.outpath,'images','category'+str(tablecategory),'html')
+                        f=open(os.path.join(dirname,table_ids[assigned_category]+'.html'),'w')
+                        f.write(html_content)
+                        f.close()
+
+                        # Convert html code to .csv
+                        row_data = html_to_csv(html_content)
+                        self.write_csv(row_data,table_ids[assigned_category],tablecategory)
+
+                        # Save DataFrame
+                        self.write_dataframe(row_data,table_ids[assigned_category],tablecategory)
 
                         #apply_shear: bool - True: Apply Transformation, False: No Transformation | probability weight for shearing to be 25%
                         #apply_shear = random.choices([True, False],weights=[0.25,0.75])[0]
@@ -128,14 +141,9 @@ class TableGenerator:
 
                         if(self.visualizeimgs):
                             #if the image and equivalent html is need to be stored
-                            dirname=os.path.join('visualizeimgs/','category'+str(tablecategory))
-                            f=open(os.path.join(dirname,'html',table_ids[assigned_category]+'.html'),'w')
-                            f.write(html_content)
-                            f.close()
-                            im.save(os.path.join(dirname,'img',table_ids[assigned_category]+'.png'), dpi=(600, 600))
+                            dirname=os.path.join(self.outpath,'images','category'+str(tablecategory),'raw')
+                            im.save(os.path.join(dirname,table_ids[assigned_category]+'.png'), dpi=(600, 600))
 
-                        # driver.quit()
-                        # 0/0
                         data_arr.append([[same_row_matrix, same_col_matrix, same_cell_matrix, bboxes,[tablecategory]],[im]])
                         table_categories[tablecategory-1]+=1
                         break
@@ -175,7 +183,7 @@ class TableGenerator:
                                   (int(arr[index, 2])+3, int(arr[index, 3])+3),
                                   (c1,c2,c3), 1)
 
-            img_name=os.path.join('bboxes','category'+str(imgindex+1),output_file_name+'_'+matname+'.jpg')
+            img_name=os.path.join(self.outpath,'images','category'+str(imgindex+1),'bboxes',output_file_name+'_'+matname+'.jpg')
             cv2.imwrite(img_name,im)
 
     def generate_table_set(self,threadnum):
@@ -251,25 +259,31 @@ class TableGenerator:
                 print('Dataset folders do not exist.')
                 return
 
-        #create all directories here
+        # Create all directories
+        self.create_dir(self.outpath) # Main output directory
+        data_dir = os.path.join(self.outpath,'data')
+        img_dir = os.path.join(self.outpath,'images')
+        self.create_dir(data_dir) # Data subdirectory
+        self.create_dir(img_dir) # Image subdirectory
+
+        for tablecategory in range(1,5):
+            dirname=os.path.join(data_dir,'category'+str(tablecategory))
+            self.create_dir(dirname)
+
+            dirname=os.path.join(img_dir,'category'+str(tablecategory))
+            self.create_dir(dirname)
+            self.create_dir(os.path.join(dirname, 'html'))
+            self.create_dir(os.path.join(dirname, 'csv'))
+
         if(self.visualizeimgs):
-            self.create_dir('visualizeimgs')
             for tablecategory in range(1,5):
-                dirname=os.path.join('visualizeimgs/','category'+str(tablecategory))
-                self.create_dir(dirname)
-                self.create_dir(os.path.join(dirname,'html'))
-                self.create_dir(os.path.join(dirname, 'img'))
+                dirname=os.path.join(img_dir,'category'+str(tablecategory))
+                self.create_dir(os.path.join(dirname,'raw'))
 
         if(self.visualizebboxes):
-            self.create_dir('bboxes')
             for tablecategory in range(1,5):
-                dirname=os.path.join('bboxes','category'+str(tablecategory))
-                self.create_dir(dirname)
-
-        self.create_dir(self.outtfpath)              #create output directory if it does not exist
-        for tablecategory in range(1,5):
-            dirname=os.path.join(self.outtfpath,'category'+str(tablecategory))
-            self.create_dir(dirname)
+                dirname=os.path.join(img_dir,'category'+str(tablecategory))
+                self.create_dir(os.path.join(dirname, 'bboxes'))
 
         time=datetime.now()
         time_string=time.strftime("%d/%m/%Y %H:%M:%S")
@@ -290,14 +304,30 @@ class TableGenerator:
         print("\nTable generation finished:",time_string)
 
     def write_bboxes(self,bboxes,table_id,table_category):
-        ''' New function written by MTW.  Saves cell bboxes array as pickled array.'''
+        '''Saves cell bboxes array as pickled array.'''
 
-        output_file_name_bbox=table_id+'.bboxes'
-        pickle.dump(bboxes,open(os.path.join(self.outtfpath,'category'+str(table_category),output_file_name_bbox),"wb"))
+        dirname=os.path.join(self.outpath,'data','category'+str(table_category))
+        pickle.dump(bboxes,open(os.path.join(dirname,table_id+'.bboxes'),'wb'))
 
     def write_matrices(self,col_mat,row_mat,cell_mat,table_id,table_category):
-        ''' New function written by MTW.  Saves adjacency matrices as pickled dictionary.'''
+        '''Saves adjacency matrices as pickled dictionary.'''
+
         all_mat = {}
-        all_mat['row'] = row_mat ; all_mat['col'] = col_mat ; all_mat['cell'] = cell_mat ;
-        output_file_name_mat=table_id+'.matrices'
-        pickle.dump(all_mat,open(os.path.join(self.outtfpath,'category'+str(table_category),output_file_name_mat),"wb"))
+        all_mat['row'] = row_mat ; all_mat['col'] = col_mat ; all_mat['cell'] = cell_mat
+        dirname=os.path.join(self.outpath,'data','category'+str(table_category))
+        pickle.dump(all_mat,open(os.path.join(dirname,table_id+'.matrices'),'wb'))
+
+    def write_dataframe(self,row_data,table_id,table_category):
+        '''Saves table as pickled Pandas DataFrame.'''
+
+        table_df = pd.DataFrame(data=row_data)
+        dirname=os.path.join(self.outpath,'data','category'+str(table_category))
+        pickle.dump(table_df,open(os.path.join(dirname,table_id+'.dataframe'),'wb')) # Save DataFrame
+
+    def write_csv(self,row_data,table_id,table_category):
+        '''Writes table as .csv file'''
+
+        dirname=os.path.join(self.outpath,'images','category'+str(table_category),'csv')
+        with open(os.path.join(dirname,table_id+'.csv'), 'w') as csvfile: # Save .csv
+            writer = csv.writer(csvfile)
+            writer.writerows(row_data)

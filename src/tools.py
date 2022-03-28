@@ -1,25 +1,27 @@
 import traceback
 
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import Firefox
 from selenium.webdriver import PhantomJS
-
 from selenium.webdriver.firefox.options import Options
+
 from PIL import Image
 from io import BytesIO
 import warnings
 import json
 import time
+
+from bs4 import BeautifulSoup
+
 def warn(*args, **kwargs):
     pass
 
 warnings.warn = warn
 
 def html_to_img(driver,html_content,id_count):
-    '''converts html to image'''
+    '''Converts html to image'''
     counter=1                #This counter is to keep track of the exceptions and stop execution after 10 exceptions have occurred
     while(True):
         try:
@@ -57,3 +59,29 @@ def html_to_img(driver,html_content,id_count):
                 raise e
 
             continue
+
+def html_to_csv(html_content):
+    '''Converts HTML file to .csv.
+
+    Args:
+        html_content: string containing contents of .html files.
+
+    Returns:
+        output_rows: list of row contents
+    '''
+
+    soup = BeautifulSoup(html_content)
+    table = soup.find("table")
+    output_rows = []
+
+    for table_row in table.findAll('tr'):
+        headers = table_row.findAll('th')
+        columns = table_row.findAll('td')
+        output_row = []
+        for header in headers:
+            output_row.append(header.text)
+        for column in columns:
+            output_row.append(column.text)
+        output_rows.append(output_row)
+
+    return(output_rows)

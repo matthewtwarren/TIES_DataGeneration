@@ -210,8 +210,6 @@ class Table:
         self.headers[:,colnumber]='h'
         self.header_count['c']+=1
 
-
-
     def generate_missing_cells(self):
         '''This is randomly select some cells to be empty (not containing any text)'''
         missing=np.random.random(size=(self.get_log_value(),2))
@@ -219,7 +217,6 @@ class Table:
         missing[:, 1] = (self.no_of_rows -1 - self.header_count['c']) * missing[:, 1] + self.header_count['c']
         for arr in missing:
             self.missing_cells.append((int(arr[0]), int(arr[1])))
-
 
     def create_style(self):
         '''This function will dynamically create stylesheet. This stylesheet essentially creates our specific
@@ -356,7 +353,6 @@ class Table:
         '''This will create the complete table'''
         self.define_col_types()                                             #define the data types for each column
         self.generate_missing_cells()                                       #generate missing cells
-
 
         local_span_flag=False                                               #no span initially
         if(self.assigned_category==3):                                      #if assigned category is 3, then it should have spanned rows or columns
