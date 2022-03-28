@@ -205,7 +205,7 @@ class TableGenerator:
         for i in range(1,5):
             table_ids.append(''.join(random.choices(string.ascii_lowercase + string.digits, k=20)))
 
-        print('\nThread: ',threadnum,' Started:', table_ids)
+        print('\nThread {} started: {}, {}, {}, {}'.format(threadnum+1,table_ids[0],table_ids[1],table_ids[2],table_ids[3]))
 
         data_arr, table_categories = self.generate_tables(driver, table_ids)
 
@@ -234,8 +234,7 @@ class TableGenerator:
                         img=img.astype(np.int64)
                         self.draw_matrices(img,bboxes,[rowmatrix,colmatrix,cellmatrix],imgindex,table_id)
 
-                print('\nThread :',threadnum,' Completed in ',time.time()-starttime,' ' ,table_ids,'with len:',(len(data_arr)))
-                print('category 1: ',table_categories[0],', category 2: ',table_categories[1],', category 3: ',table_categories[2],', category 4: ',table_categories[3])
+                print('\nThread {} completed in: {:.1f} seconds'.format(threadnum+1,time.time()-starttime))
 
             except Exception as e:
                 print('Exception occurred in generate_table_set function for file: ',table_ids)
