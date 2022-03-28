@@ -10,8 +10,7 @@ import pickle
 from datetime import datetime
 from multiprocessing import Process,Pool,cpu_count
 import argparse
-from selenium.webdriver import Firefox
-from selenium.webdriver import PhantomJS
+from selenium.webdriver import Firefox, PhantomJS
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -23,19 +22,22 @@ def warn(*args,**kwargs):
     pass
 
 class Logger:
+    '''A class to log output messages and errors.'''
+
     def __init__(self):
         pass
-        #self.file=open('logtxt.txt','a+')
 
     def write(self,txt):
+        '''Writes text to log file.'''
         file = open('logfile.txt', 'a+')
         file.write(txt)
         file.close()
 
 class TableGenerator:
+    ''' A class to generate tables. '''
     def __init__(self,outpath,generations,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath,minrows,maxrows,mincols,maxcols):
 
-        self.outpath = outpath                        #directory to store tfrecords
+        self.outpath = outpath
         self.num_of_generations=generations             #number of table set generations (table sets / threads)
 
         self.unlvocrpath=unlvocrpath                    #unlv ocr ground truth files
@@ -47,11 +49,11 @@ class TableGenerator:
         self.visualizeimgs=visualizeimgs                #wheter to store images separately or not
         self.visualizebboxes=visualizebboxes
 
-        self.row_min=minrows                                  #minimum number of rows in a table (includes headers)
+        self.row_min=minrows                            #minimum number of rows in a table (includes headers)
         self.row_max=maxrows                            #maximum number of rows in a table
-        self.col_min=mincols                                 #minimum number of columns in a table
-        self.col_max=maxcols                                  #maximum number of columns in a table
-        self.num_of_max_vertices=self.col_max*self.row_max*2   #number of vertices (maximum number of words in any table)
+        self.col_min=mincols                            #minimum number of columns in a table
+        self.col_max=maxcols                            #maximum number of columns in a table
+        self.num_of_max_vertices=self.col_max*self.row_max*2  #number of vertices (maximum number of words in any table)
         self.max_length_of_word=30                      #max possible length of each word
 
         self.minshearval=-0.1                           #minimum value of shear to apply to images
@@ -59,44 +61,50 @@ class TableGenerator:
         self.minrotval=-0.01                            #minimum rotation applied to images
         self.maxrotval=0.01                             #maximum rotation applied to images
 
-        self.max_height=768                           #max image height
-        self.max_width=1366                           #max image width
+        self.max_height=768                             #max image height
+        self.max_width=1366                             #max image width
         self.tables_cat_dist = [1,1,1,1]
 
         self.logger=Logger()                            #if we want to use logger and store output to file
-        #self.logdir = 'logdir/'
-        #self.create_dir(self.logdir)
-        #logging.basicConfig(filename=os.path.join(self.logdir,'Log.log'), filemode='a+', format='%(name)s - %(levelname)s - %(message)s')
 
-    def create_dir(self,fpath):                         #creates directory fpath if it does not exist
+    def create_dir(self,fpath):
+        '''Creates directories given a path.'''
         if(not os.path.exists(fpath)):
             os.mkdir(fpath)
 
-    def str_to_int(self,str):                           #converts each character in a word to equivalent int
+    def str_to_int(self,str):
+        '''Converts each character in a word to an equivalent int.'''
         intsarr=np.array([ord(chr) for chr in str])
         padded_arr=np.zeros(shape=(self.max_length_of_word),dtype=np.int64)
         padded_arr[:len(intsarr)]=intsarr
         return padded_arr
 
-    def convert_to_int(self, arr):                      #simply converts array to a string
+    def convert_to_int(self, arr):
+        '''Converts each value in an array to int.'''
         return [int(val) for val in arr]
 
-    def pad_with_zeros(self,arr,shape):                 #will pad the input array with zeros to make it equal to 'shape'
+    def pad_with_zeros(self,arr,shape):
+        '''Pads the input array with zeros to make it equal to 'shape'.'''
         dummy=np.zeros(shape,dtype=np.int64)
         dummy[:arr.shape[0],:arr.shape[1]]=arr
         return dummy
 
     def generate_tables(self,driver,table_ids):
-        '''Creates tables (empty/filled?). Number of rows and columns are chosen (randomly) first.'''
-        row_col_min=[self.row_min,self.col_min]                 #to randomly select number of rows
-        row_col_max=[self.row_max,self.col_max]                 #to randomly select number of columns
-        rc_arr = np.random.uniform(low=row_col_min, high=row_col_max, size=(4, 2))        #random row and col selection for N images
-        table_categories=[0,0,0,0]                         #These 4 values will count the number of images for each of the category
-        rc_arr[:,0]=rc_arr[:,0]+2                                     #increasing the number of rows by a fix 2. (We can comment out this line. Does not affect much)
+        '''Constructs the tables and saves the table data and images.
+
+        Args:
+            driver: Selenium web driver used to convert html to an image.
+            table_ids: List of table IDs
+        '''
+
+        row_col_min=[self.row_min,self.col_min]
+        row_col_max=[self.row_max,self.col_max]
+        rc_arr = np.random.uniform(low=row_col_min, high=row_col_max, size=(4, 2)) # Random row and col selection
+        table_categories=[0,0,0,0] # These 4 values will count the number of images for each of the category [obselete]
         data_arr=[]
         exceptioncount=0
 
-        rc_count=0                                              #for iterating through row and col array
+        rc_count=0 # For iterating through row and col array
         for assigned_category,cat_count in enumerate(self.tables_cat_dist):
             for _ in range(cat_count):
                 rows = int(round(rc_arr[rc_count][0])) # Needed as np.random.uniform generates floating point values
@@ -104,29 +112,30 @@ class TableGenerator:
 
                 exceptcount=0
                 while(True):
-                    #This loop is to repeat and retry generating image if some an exception is encountered.
+                    # This loop is to repeat and retry generating image if some an exception is encountered.
                     try:
-                        #initialize table class
+                        # Initialize table class
                         table = Table(rows,cols,self.unlvimagespath,self.unlvocrpath,self.unlvtablepath,assigned_category+1,self.distributionfile)
-                        #get table of rows and cols based on unlv distribution and get features of this table
-                        #(same row, col and cell matrices, total unique ids, html conversion of table and its category)
-                        same_cell_matrix,same_col_matrix,same_row_matrix, id_count, html_content,tablecategory= table.create()
+                        # Get table of rows and cols based on unlv distribution and get features of this table (same row, col and cell matrices, total unique ids, html conversion of table and its category)
+                        same_cell_matrix, same_col_matrix, same_row_matrix, id_count, html_content, tablecategory = table.create()
 
-                        # Convert this html code to image using selenium webdriver. Get equivalent bounding boxes
-                        # for each word in the table. This will generate ground truth for our problem
+                        # Convert this html code to image using selenium webdriver. Get equivalent bounding boxes for each word in the table. This will generate ground truth for our problem
                         im,bboxes = html_to_img(driver, html_content, id_count)
+
+                        # Save table as html file
                         dirname=os.path.join(self.outpath,'images','category'+str(tablecategory),'html')
                         f=open(os.path.join(dirname,table_ids[assigned_category]+'.html'),'w')
                         f.write(html_content)
                         f.close()
 
-                        # Convert html code to .csv
+                        # Convert html to .csv
                         row_data = html_to_csv(html_content)
                         self.write_csv(row_data,table_ids[assigned_category],tablecategory)
 
-                        # Save DataFrame
+                        # Save table as Pandas DataFrame
                         self.write_dataframe(row_data,table_ids[assigned_category],tablecategory)
 
+                        # If we want to apply probability to table transformations
                         #apply_shear: bool - True: Apply Transformation, False: No Transformation | probability weight for shearing to be 25%
                         #apply_shear = random.choices([True, False],weights=[0.25,0.75])[0]
 
@@ -140,7 +149,7 @@ class TableGenerator:
                             tablecategory=4
 
                         if(self.visualizeimgs):
-                            #if the image and equivalent html is need to be stored
+                            # If the image is to be saved
                             dirname=os.path.join(self.outpath,'images','category'+str(tablecategory),'raw')
                             im.save(os.path.join(dirname,table_ids[assigned_category]+'.png'), dpi=(600, 600))
 
@@ -152,7 +161,6 @@ class TableGenerator:
                         exceptcount+=1
                         if(exceptioncount>10):
                             print('More than 10 exceptions occured for files: ',table_ids)
-                            #if there are more than 10 exceptions, then return None
                             return None
                         #traceback.print_exc()
                         #print('\nException No.', exceptioncount, ' File: ', str(table_ids))
@@ -162,7 +170,7 @@ class TableGenerator:
         return data_arr,table_categories
 
     def draw_matrices(self,img,arr,matrices,imgindex,output_file_name):
-        '''Call this fucntion to draw visualizations of a matrix on image'''
+        '''Annotates image with cell bboxes. Three images are saved, coloured based on whether cells shared a cell, row or column.'''
         no_of_words=len(arr)
         colors = np.random.randint(0, 255, (no_of_words, 3))
         arr = arr[:, 2:]
