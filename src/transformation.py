@@ -1,9 +1,7 @@
-
 from skimage import io,img_as_ubyte
 from skimage import transform
 import numpy as np
 from PIL import Image,ImageDraw
-
 
 def find_new_points(matrix,x,y):
     pts=np.array([[x,y,0]])

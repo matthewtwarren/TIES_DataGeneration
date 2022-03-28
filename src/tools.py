@@ -21,7 +21,17 @@ def warn(*args, **kwargs):
 warnings.warn = warn
 
 def html_to_img(driver,html_content,id_count):
-    '''Converts html to image'''
+    '''Converts html to image.
+
+    Args:
+        driver: Selenium web driver
+        html_content: String containing html code for table
+        id_count: number of text entities in table
+
+    Returns:
+        im: cropped table image
+        bboxes: list of lists containing the text, text length and bbox positions for each table entity
+    '''
     counter=1                #This counter is to keep track of the exceptions and stop execution after 10 exceptions have occurred
     while(True):
         try:
@@ -47,12 +57,11 @@ def html_to_img(driver,html_content,id_count):
                 # cv2.rectangle(im,(xmin,ymin),(xmax,ymax),(0,0,255),2)
 
             png = driver.get_screenshot_as_png()
-
             im = Image.open(BytesIO(png))
-
             im = im.crop((0,0, max_width, max_height))
 
             return im,bboxes
+
         except Exception as e:
             counter+=1
             if(counter==10):
@@ -67,7 +76,7 @@ def html_to_csv(html_content):
         html_content: string containing contents of .html files.
 
     Returns:
-        output_rows: list of row contents
+        output_rows: list of lists containing contents of each row.
     '''
 
     soup = BeautifulSoup(html_content)

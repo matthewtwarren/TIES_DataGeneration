@@ -6,7 +6,8 @@ import numpy as np
 import pickle
 
 class Distribution:
-    '''This class extracts the distribution of text, numbers and others(containing special characters) from unlv dataset'''
+    ''' This class extracts the distribution of text, numbers and others(containing special characters) from unlv dataset'''
+
     def __init__(self,images_path,ocr_path,table_path,picklefilename):
         self.images_path=images_path
         self.ocr_path=ocr_path
@@ -86,8 +87,6 @@ class Distribution:
         return np.array(final_words_coords), np.array(final_text)
 
     def words_rectangles(self,root, table_coords,row_col_counter, im):
-        '''
-        '''
         table_coords = np.array(table_coords)
         #word means alphabetic word, number means digit, other means strings with special characters
 

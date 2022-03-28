@@ -58,42 +58,39 @@ class Table:
 
         self.idcounter=0
 
-        '''cell_types matrix have two possible values: 'n' and 'w' where 'w' means word and 'n' means number'''
+        # cell_types matrix have two possible values: 'n' and 'w' where 'w' means word and 'n' means number
         self.cell_types=np.chararray(shape=(self.no_of_rows,self.no_of_cols))
 
-        '''headers matrix have two possible values: 's' and 'h' where 'h' means header and 's' means simple text'''
+        # Headers matrix have two possible values: 's' and 'h' where 'h' means header and 's' means simple text
         self.headers=np.chararray(shape=(self.no_of_rows,self.no_of_cols))
 
-        '''A positive value at a position in matrix shows the number of columns to span and -1 will show to skip that cell as part of spanned cols'''
+        # A positive value at a position in matrix shows the number of columns to span and -1 will show to skip that cell as part of spanned cols
         self.col_spans_matrix=np.zeros(shape=(self.no_of_rows,self.no_of_cols))
 
-        '''A positive value at a position means number of rows to span and -1 will show to skip that cell as part of spanned rows'''
+        # A positive value at a position means number of rows to span and -1 will show to skip that cell as part of spanned rows
         self.row_spans_matrix=np.zeros(shape=(self.no_of_rows,self.no_of_cols))
 
-        '''missing_cells will contain a list of (row,column) pairs where each pair would show a cell where no text should be written'''
+        # Missing_cells will contain a list of (row,column) pairs where each pair would show a cell where no text should be written
         self.missing_cells=[]
 
         #header_count will keep track of how many top rows and how many left columns are being considered as headers
         self.header_count={'r':2,'c':0}
 
-        '''This matrix is essential for generating same cell, same row and same col matrices. Because this
-        matrix holds the list of word ids in each cell of the table'''
+        # This matrix is essential for generating same cell, same row and same col matrices. Because this matrix holds the list of word ids in each cell of the table
         self.data_matrix = np.empty(shape=(self.no_of_rows,self.no_of_cols),dtype=object)
 
 
     def get_log_value(self):
-        ''' returns log base 2 (x)'''
+        '''Returns log base 2(x).'''
         import math
         return int(math.log(self.no_of_rows*self.no_of_cols,2))
 
 
     def define_col_types(self):
-        '''
-        We define the data type that will go in each column. We categorize data in three types:
+        ''' Defines the data type that will go in each column. We categorize data in three types:
         1. 'n': Numbers
         2. 'w': word
         3. 'r': other types (containing special characters)
-
         '''
 
         len_all_words=len(self.all_words)
@@ -109,18 +106,17 @@ class Table:
         for i,type in enumerate(random.choices(['n','w','r'], weights=[prob_numbers,prob_words,prob_others], k=self.no_of_cols)):
             self.cell_types[:,i]=type
 
-        '''The headers should be of type word'''
+        # The headers should be of type word'''
         self.cell_types[0:2,:]='w'
 
-        '''All cells should have simple text but the headers'''
+        # All cells should have simple text but the headers'''
         self.headers[:] = 's'
         self.headers[0:2, :] = 'h'
 
 
     def generate_random_text(self,type):
         '''Depending on the data type of column, this function returns a randomly selected string (words or numbers)
-        from unlv dataset and unique id assigned to Each word or number in the string.
-        '''
+        from unlv dataset and unique id assigned to Each word or number in the string.'''
         html=''
         ids=[]
         if(type=='n'):
@@ -143,8 +139,7 @@ class Table:
 
 
     def agnostic_span_indices(self,maxvalue,max_lengths=-1):
-        '''Spans indices. Can be used for row or col span
-        Span indices store the starting indices of row or col spans while span_lengths will store
+        '''Spans indices for row or col span. Span indices store the starting indices of row or col spans while span_lengths will store
         the length of span (in terms of cells) starting from start index.'''
         span_indices = []
         span_lengths = []
@@ -197,7 +192,6 @@ class Table:
 
     def create_irregular_header(self):
         '''To make some random row spans for headers on first col of each row'''
-
         colnumber=0
         #-2 to exclude top 2 rows of header and -1 so it won't occupy the complete column
         span_indices, span_lengths = self.agnostic_span_indices(self.no_of_rows-2)
@@ -211,17 +205,18 @@ class Table:
         self.header_count['c']+=1
 
     def generate_missing_cells(self):
-        '''This is randomly select some cells to be empty (not containing any text)'''
+        '''This is randomly select some cells to be empty (not containing any text). '''
         missing=np.random.random(size=(self.get_log_value(),2))
         missing[:,0]=(self.no_of_rows - 1 - self.header_count['r'])*missing[:,0]+self.header_count['r']
         missing[:, 1] = (self.no_of_rows -1 - self.header_count['c']) * missing[:, 1] + self.header_count['c']
         for arr in missing:
             self.missing_cells.append((int(arr[0]), int(arr[1])))
+        # Hack for creating tables with no empty cells
+        #self.missing_cells=[]
 
     def create_style(self):
         '''This function will dynamically create stylesheet. This stylesheet essentially creates our specific
-        border types in tables'''
-
+        border types in tables. '''
         style = "<head><style>"
         style += "html{width:1366px;height:768px;background-color: white;}table{"
 
@@ -246,9 +241,7 @@ class Table:
         return style
 
     def create_html(self):
-        '''Depending on various conditions e.g. columns spanned, rows spanned, data types of columns,
-        regular or irregular headers, tables types and border types, this function creates equivalent html
-        script'''
+        '''Depending on various conditions e.g. columns spanned, rows spanned, data types of columns, regular or irregular headers, tables types and border types, this function creates equivalent html code. '''
 
         temparr=['td', 'th']
         html="""<html>"""
@@ -288,8 +281,7 @@ class Table:
         return html
 
     def create_same_matrix(self,arr,ids):
-        '''Given a list of lists with each list consisting of all ids considered same, this function
-         generates a matrix '''
+        '''Given a list of lists with each list consisting of all ids considered same, this function generates a matrix.'''
         matrix=np.zeros(shape=(ids,ids))
         for subarr in arr:
             for element in subarr:
@@ -297,7 +289,7 @@ class Table:
         return matrix
 
     def create_same_col_matrix(self):
-        '''This function will generate same column matrix from available matrices data'''
+        '''This function will generate same column matrix from available matrices data.'''
         all_cols=[]
 
         for col in range(self.no_of_cols):
@@ -309,7 +301,7 @@ class Table:
         return self.create_same_matrix(all_cols,self.idcounter)
 
     def create_same_row_matrix(self):
-        '''This function will generate same row matrix from available matrices data'''
+        '''This function will generate same row matrix from available matrices data.'''
         all_rows=[]
 
         for row in range(self.no_of_rows):
@@ -321,7 +313,7 @@ class Table:
         return self.create_same_matrix(all_rows,self.idcounter)
 
     def create_same_cell_matrix(self):
-        '''This function will generate same cell matrix from available matrices data'''
+        '''This function will generate same cell matrix from available matrices data.'''
         all_cells=[]
         for row in range(self.no_of_rows):
             for col in range(self.no_of_cols):
@@ -330,8 +322,7 @@ class Table:
         return self.create_same_matrix(all_cells,self.idcounter)
 
     def select_table_category(self):
-        '''This function is to make sure that the category of generated table is same as required
-        based on selection of table types, border types, row or col spans:
+        '''This function is to make sure that the category of generated table is same as required based on selection of table types, border types, row or col spans:
         1. spanflag
         2. tabletype
         3. bordertype
