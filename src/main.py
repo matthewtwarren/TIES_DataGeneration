@@ -31,10 +31,10 @@ class Logger:
         file.close()
 
 class TableGenerator:
-    def __init__(self,outpath,tablesets,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath,minrows,maxrows,mincols,maxcols):
+    def __init__(self,outpath,generations,unlvimagespath,unlvocrpath,unlvtablepath,visualizeimgs,visualizebboxes,distributionfilepath,minrows,maxrows,mincols,maxcols):
 
         self.outtfpath = outpath                        #directory to store tfrecords
-        self.tablesets=tablesets                      #number of table sets to generate
+        self.num_of_generations=generations             #number of table set generations (table sets / threads)
 
         self.unlvocrpath=unlvocrpath                    #unlv ocr ground truth files
         self.unlvimagespath=unlvimagespath              #unlv images
@@ -276,7 +276,7 @@ class TableGenerator:
         print("Table generation started:",time_string)
 
         threads=[]
-        for set in range(self.tablesets):
+        for set in range(self.num_of_generations):
             for threadnum in range(max_threads):
                 proc = Process(target=self.generate_table_set, args=(threadnum,))
                 proc.start()

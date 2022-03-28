@@ -30,5 +30,11 @@ if(args.visualizebboxes==1):
 
 distributionfile='unlv_distribution'
 
-t = TableGenerator(args.outpath,args.tablesets,args.imagespath,args.ocrpath,args.tablepath,visualizeimgs,visualizebboxes,distributionfile,args.minrows,args.maxrows,args.mincols,args.maxcols)
+if args.threads > 1 and args.tablesets%args.threads != 0:
+    print("You are using trying to use {} threads to generate {} sets of tables.\nPlease ensure that the number of table sets is divisible by the number of threads.".format(args.threads,args.tablesets))
+    exit(130)
+else:
+    number_of_generations=args.tablesets//args.threads
+
+t = TableGenerator(args.outpath,number_of_generations,args.imagespath,args.ocrpath,args.tablepath,visualizeimgs,visualizebboxes,distributionfile,args.minrows,args.maxrows,args.mincols,args.maxcols)
 t.start_generation(args.threads)
