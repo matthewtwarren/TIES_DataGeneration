@@ -146,7 +146,7 @@ class TableGenerator:
 
                             #transform image and bounding boxes of the words
                             im, bboxes = Transform(im, bboxes, shearval, rotval, self.max_width, self.max_height)
-                            tablecategory=4
+                            #tablecategory=4
 
                         if(self.visualizeimgs):
                             # If the image is to be saved

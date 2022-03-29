@@ -360,5 +360,8 @@ class Table:
         cells_matrix,cols_matrix,rows_matrix=self.create_same_cell_matrix(),\
                                              self.create_same_col_matrix(),\
                                              self.create_same_row_matrix()
-        tablecategory=self.select_table_category()                      #select table category of the table
+        # Commented the following as was unclear and causing issues with saving files
+        # tablecategory=self.select_table_category() #select table category of the table
+        tablecategory=self.assigned_category
+
         return cells_matrix,cols_matrix,rows_matrix,self.idcounter,html,tablecategory
