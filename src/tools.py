@@ -58,7 +58,7 @@ def html_to_img(driver,html_content,id_count):
 
             png = driver.get_screenshot_as_png()
             im = Image.open(BytesIO(png))
-            im = im.crop((0,0, max_width, max_height))
+            im = crop_image(im,bboxes)
 
             return im,bboxes
 
@@ -68,6 +68,28 @@ def html_to_img(driver,html_content,id_count):
                 raise e
 
             continue
+
+def crop_image(image,bboxes):
+    '''Crops image using bbox coordinates.
+
+    Args:
+        image: PIL image object.
+        bboxes: list of lists containg text bbox coordinates.
+
+    Returns:
+        cropped_image: cropped image.
+    '''
+    x_max, y_max = [], []
+    for set in bboxes:
+        x_max.append(set[4])
+        y_max.append(set[5])
+
+    max_width = max(x_max)+25
+    max_height = max(y_max)+25
+    cropped_image = image.crop((0,0, max_width, max_height))
+
+    return(cropped_image)
+
 
 def html_to_csv(html_content):
     '''Converts HTML file to .csv.
