@@ -151,7 +151,10 @@ class TableGenerator:
                         if(self.visualizeimgs):
                             # If the image is to be saved
                             dirname=os.path.join(self.outpath,'images','category'+str(tablecategory),'raw')
-                            im.save(os.path.join(dirname,table_ids[assigned_category]+'.png'), dpi=(600, 600))
+                            #im.save(os.path.join(dirname,table_ids[assigned_category]+'.png'), dpi=(600, 600)) # Save as .png
+                            im = im.convert('RGB')
+                            im.save(os.path.join(dirname,table_ids[assigned_category]+'.jpg'), dpi=(600, 600)) # Save as .jpg
+
 
                         data_arr.append([[same_row_matrix, same_col_matrix, same_cell_matrix, bboxes,[tablecategory]],[im]])
                         table_categories[tablecategory-1]+=1
