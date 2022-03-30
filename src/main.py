@@ -10,7 +10,7 @@ import pickle
 from datetime import datetime
 from multiprocessing import Process,Pool,cpu_count
 import argparse
-from selenium.webdriver import Firefox, PhantomJS
+from selenium.webdriver import Firefox
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -99,6 +99,7 @@ class TableGenerator:
 
         row_col_min=[self.row_min,self.col_min]
         row_col_max=[self.row_max,self.col_max]
+        np.random.seed(random.randint(1,1000000)) # Fixes issue where np.random.uniform generates the same numbers at each pass
         rc_arr = np.random.uniform(low=row_col_min, high=row_col_max, size=(4, 2)) # Random row and col selection
         table_categories=[0,0,0,0] # These 4 values will count the number of images for each of the category [obselete]
         data_arr=[]
