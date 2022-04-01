@@ -79,12 +79,13 @@ def crop_image(image,bboxes):
         cropped_image: cropped image.
     '''
     x_max, y_max = [], []
-    for set in bboxes:
-        x_max.append(set[4])
-        y_max.append(set[5])
 
-    max_width = max(x_max)+25
-    max_height = max(y_max)+25
+    for set in bboxes:
+        x_max.append(int(set[4]))
+        y_max.append(int(set[5]))
+
+    max_width = max(x_max)+30
+    max_height = max(y_max)+30
     cropped_image = image.crop((0,0, max_width, max_height))
 
     return(cropped_image)

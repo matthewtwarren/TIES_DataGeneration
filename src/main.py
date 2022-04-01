@@ -147,6 +147,7 @@ class TableGenerator:
 
                             #transform image and bounding boxes of the words
                             im, bboxes = Transform(im, bboxes, shearval, rotval, self.max_width, self.max_height)
+                            im = crop_image(im, bboxes)
                             #tablecategory=4
 
                         if(self.visualizeimgs):
@@ -166,8 +167,8 @@ class TableGenerator:
                         if(exceptioncount>10):
                             print('More than 10 exceptions occured for files: ',table_ids)
                             return None
-                        #traceback.print_exc()
-                        #print('\nException No.', exceptioncount, ' File: ', str(table_ids))
+                        traceback.print_exc()
+                        print('\nException No.', exceptioncount, ' File: ', str(table_ids))
                         #logging.error("Exception Occured "+str(table_ids),exc_info=True)
                 rc_count+=1
 
